@@ -21,4 +21,14 @@ public class RosatelFlujoTest extends BaseTest {
         loginPage.intentarLogin("gmailfake@gmail.com", "fake123");
         Thread.sleep(5000); 
     }
+
+    @Test
+    public void test02_FlujoDeRegistro() throws InterruptedException {
+        System.out.println("--- INICIANDO PRUEBA 2: FLUJO DE REGISTRO DE NUEVO USUARIO ---");
+        driver.get("https://www.rosatel.pe/");
+        
+        RegistroPage registroPage = new RegistroPage(driver);
+        registroPage.navegarYRegistrarCorreo("gmailprueba@gmail.com");
+        
+    }
 }
