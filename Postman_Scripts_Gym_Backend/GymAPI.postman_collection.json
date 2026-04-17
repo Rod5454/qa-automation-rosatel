@@ -1,0 +1,1989 @@
+{
+  "info": {
+    "_postman_id": "3ea422b9-92d6-4de2-839f-be5723660f02",
+    "name": "GymAPI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53757182"
+  },
+  "item": [
+    {
+      "name": "http://localhost:5078/api/auth/login",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set(\"baseUrl\", pm.environment.get(\"baseUrl\") || \"http://localhost:5078\");\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// ── PRUEBA 1: Login exitoso ──────────────────────────────────────\r",
+              "pm.test(\"Status 200 - Login exitoso\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"Response success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"Token presente en data\", () => pm.expect(json.data.token).to.be.a(\"string\").and.not.empty);\r",
+              "pm.test(\"UserId es número entero\", () => pm.expect(json.data.userId).to.be.a(\"number\"));\r",
+              "pm.test(\"Roles es un array no vacío\", () => pm.expect(json.data.roles).to.be.an(\"array\").and.not.empty);\r",
+              "pm.test(\"Expiration es una fecha futura\", () => {\r",
+              "  const exp = new Date(json.data.expiration);\r",
+              "  pm.expect(exp.getTime()).to.be.greaterThan(Date.now());\r",
+              "});\r",
+              " \r",
+              "// Guardar token automáticamente para las demás peticiones\r",
+              "if (json.data && json.data.token) {\r",
+              "  pm.environment.set(\"adminToken\", json.data.token);\r",
+              "  pm.environment.set(\"currentUserId\", json.data.userId);\r",
+              "  pm.environment.set(\"currentRoles\", json.data.roles.join(\",\"));\r",
+              "  console.log(\"Token ADMIN guardado en entorno.\");\r",
+              "}\r",
+              " \r",
+              "// ── PRUEBA 2: Login con credenciales incorrectas ──────────────\r",
+              "// pm.test(\"Status 401 - Credenciales inválidas\", () => pm.response.to.have.status(401));\r",
+              "// pm.test(\"success = false\", () => pm.expect(pm.response.json().success).to.be.false);\r",
+              " \r",
+              "// ── PRUEBA 3: Body vacío ──────────────────────────────────────\r",
+              "// Body vacío = {}\r",
+              "// pm.test(\"Status 400 o 401 con body vacío\", () =>\r",
+              "//   pm.expect([400, 401]).to.include(pm.response.code));"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"userName\": \"JosephAlexanderYN2000\",\r\n    \"password\": \"Joseph18\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/auth/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/socios",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Verifica que exista el token de ADMIN en el entorno\r",
+              "const token = pm.environment.get(\"adminToken\");\r",
+              "pm.test(\"Token ADMIN disponible antes de la petición\", () => {\r",
+              "  pm.expect(token).to.be.a(\"string\").and.not.empty;\r",
+              "});\r",
+              "// El header Authorization: Bearer {{adminToken}} debe estar configurado\r",
+              "// en la pestaña Authorization de esta petición (tipo Bearer Token).\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// ── PRUEBA 1: Creación exitosa (201) ────────────────────────────\r",
+              "pm.test(\"Status 201 - Socio creado\", () => pm.response.to.have.status(201));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"socioId es número\", () => pm.expect(json.data.socioId).to.be.a(\"number\"));\r",
+              "pm.test(\"isActive = true por defecto\", () => pm.expect(json.data.isActive).to.be.true);\r",
+              "pm.test(\"genero válido (M/F/O)\", () => pm.expect([\"M\",\"F\",\"O\"]).to.include(json.data.genero));\r",
+              "pm.test(\"Email coincide con el enviado\", () =>\r",
+              "  pm.expect(json.data.email).to.equal(\"juan@email.com\"));\r",
+              " \r",
+              "// Guardar socioId para pruebas posteriores (GET, PUT, DELETE)\r",
+              "if (json.data && json.data.socioId) {\r",
+              "  pm.environment.set(\"testSocioId\", json.data.socioId);\r",
+              "  console.log(\"socioId guardado:\", json.data.socioId);\r",
+              "}\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Username duplicado ──────────────────────\r",
+              "// Envía la misma petición dos veces y en la segunda verifica:\r",
+              "// pm.test(\"Status 400 - Username duplicado\", () => pm.response.to.have.status(400));\r",
+              "// pm.test(\"Mensaje de error claro\", () =>\r",
+              "//   pm.expect(pm.response.json().message).to.include(\"ya está en uso\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Género inválido ─────────────────────────\r",
+              "// Envía genero: \"X\" y verifica:\r",
+              "// pm.test(\"Status 400 - Género inválido\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Sin token ───────────────────────────────\r",
+              "// Quita el header Authorization y verifica:\r",
+              "// pm.test(\"Status 401 sin token\", () => pm.response.to.have.status(401));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token de SOCIO (rol insuficiente) ───────\r",
+              "// Usa {{socioToken}} en Authorization y verifica:\r",
+              "// pm.test(\"Status 403 - Acceso denegado\", () => pm.response.to.have.status(403));\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiZDJlYTM4ZjctZTQ4Ni00NGNiLWJkOTYtYjQwZDk4YTljMjAwIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTAxMTYxLCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.PLeuhKjrtG-9F6Py7SZVPZtswW_TrnLUO1XnmYMPfWw",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"userName\": \"LucyGustin\",\r\n    \"email\": \"lucy@email.com\",\r\n    \"password\": \"Secure123!\",\r\n    \"phoneNumber\": \"+51 999888777\",\r\n    \"fechaNacimiento\": \"1995-06-15\",\r\n    \"genero\": \"F\",\r\n    \"alturaCm\": 175.5,\r\n    \"pesoKg\": 72.0,\r\n    \"emergenciaNombre\": \"Maria Perez\",\r\n    \"emergenciaTelefono\": \"+51 999111222\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/socios",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "/api/socios?page=1&pageSize;=20",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Verificar token ADMIN\r",
+              "pm.test(\"Token ADMIN presente\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Lista de socios\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"data.items es un array\", () => pm.expect(json.data.items).to.be.an(\"array\"));\r",
+              "pm.test(\"Paginación presente: page, pageSize, totalCount\", () => {\r",
+              "  pm.expect(json.data.page).to.be.a(\"number\");\r",
+              "  pm.expect(json.data.pageSize).to.be.a(\"number\");\r",
+              "  pm.expect(json.data.totalCount).to.be.a(\"number\");\r",
+              "});\r",
+              "pm.test(\"pageSize no excede el solicitado (20)\", () =>\r",
+              "  pm.expect(json.data.items.length).to.be.at.most(20));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Sin token ───────────────────────────────\r",
+              "// pm.test(\"Status 401 sin token\", () => pm.response.to.have.status(401));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token de ENTRENADOR ─────────────────────\r",
+              "// pm.test(\"Status 403 con rol ENTRENADOR\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiZDJlYTM4ZjctZTQ4Ni00NGNiLWJkOTYtYjQwZDk4YTljMjAwIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTAxMTYxLCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.PLeuhKjrtG-9F6Py7SZVPZtswW_TrnLUO1XnmYMPfWw",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5078/api/socios?page=1&pageSize;=20",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize;",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/socios/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Asegura que exista el socioId guardado en\r",
+              "// http://localhost:5078/api/socios\r",
+              "const socioId = pm.environment.get(\"testSocioId\");\r",
+              "pm.test(\"testSocioId disponible en entorno\", () =>\r",
+              "  pm.expect(socioId).to.not.be.undefined.and.not.be.empty);\r",
+              "// En la URL usa: {{baseUrl}}/api/socios/{{testSocioId}}\r",
+              "// baseUrl = http://localhost:5078 - Otra manera de usar"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Socio encontrado\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"socioId coincide con el solicitado\", () =>\r",
+              "  pm.expect(json.data.socioId).to.equal(Number(pm.environment.get(\"testSocioId\"))));\r",
+              "pm.test(\"userName presente\", () => pm.expect(json.data.userName).to.be.a(\"string\"));\r",
+              "pm.test(\"isActive es boolean\", () => pm.expect(json.data.isActive).to.be.a(\"boolean\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// Usa id=999999 y verifica:\r",
+              "// pm.test(\"Status 404 - Socio no encontrado\", () => pm.response.to.have.status(404));\r",
+              "// pm.test(\"success = false\", () => pm.expect(pm.response.json().success).to.be.false);\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token de SOCIO ─────────────────────────\r",
+              "// pm.test(\"Status 403 con rol SOCIO\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiZmM4NDRiYTUtMzY4OS00NDdhLWFmMWQtMGY0Y2Y1NGE4ZTY2IiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTMzMzcyLCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.Z4U9qK_X4z3UcsnAyBECdnFY_zGVbFcqhREl3xWJnsE",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/socios/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/socios/mi-perfil",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Requiere token de SOCIO (no ADMIN)\r",
+              "const token = pm.environment.get(\"socioToken\");\r",
+              "pm.test(\"Token SOCIO disponible\", () =>\r",
+              "  pm.expect(token).to.be.a(\"string\").and.not.empty);\r",
+              "// Authorization: Bearer {{socioToken}}\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Mi perfil\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"userName presente\", () => pm.expect(json.data.userName).to.be.a(\"string\"));\r",
+              "pm.test(\"socioId presente\", () => pm.expect(json.data.socioId).to.be.a(\"number\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ADMIN (rol incorrecto) ─────────────\r",
+              "// pm.test(\"Status 403 con token ADMIN\", () => pm.response.to.have.status(403));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Sin token ───────────────────────────────\r",
+              "// pm.test(\"Status 401 sin token\", () => pm.response.to.have.status(401));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5078/api/socios/mi-perfil",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios",
+            "mi-perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/socios/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const socioId = pm.environment.get(\"testSocioId\");\r",
+              "pm.test(\"testSocioId disponible\", () => pm.expect(socioId).to.not.be.undefined);\r",
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Socio actualizado\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"Email actualizado correctamente\", () =>\r",
+              "  pm.expect(json.data.email).to.equal(\"nuevo@email.com\"));\r",
+              "pm.test(\"pesoKg actualizado\", () => pm.expect(json.data.pesoKg).to.equal(75.5));\r",
+              "pm.test(\"Genero actualizado\", () => pm.expect(json.data.genero).to.equal(\"F\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Género inválido ─────────────────────────\r",
+              "// Envía genero: \"Z\" y verifica:\r",
+              "// pm.test(\"Status 400 - Género inválido\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Email ya en uso por otro socio ──────────\r",
+              "// pm.test(\"Status 400 - Email duplicado\", () => pm.response.to.have.status(400));\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiOGYxZWFkNmEtN2Q4NC00MzY0LWE5NjYtNjk3ODU2ZmM0YzZiIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5MzQxNDYsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.kMoC2_73nHUOWK6UkFkPrg9AQk9ehAN4kMQyyehB1WA",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"lucy@email.com\",\r\n    \"pesoKg\": 70.5,\r\n    \"genero\": \"F\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/socios/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201 - Entrenador creado\", () => pm.response.to.have.status(201));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"entrenadorId presente\", () => pm.expect(json.data.entrenadorId).to.be.a(\"number\"));\r",
+              "pm.test(\"isActive = true por defecto\", () => pm.expect(json.data.isActive).to.be.true);\r",
+              "pm.test(\"especialidad presente\", () => pm.expect(json.data.especialidad).to.be.a(\"string\"));\r",
+              " \r",
+              "if (json.data && json.data.entrenadorId) {\r",
+              "  pm.environment.set(\"testEntrenadorId\", json.data.entrenadorId);\r",
+              "}\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Username duplicado ──────────────────────\r",
+              "// pm.test(\"Status 400 - Username en uso\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token de ENTRENADOR ─────────────────────\r",
+              "// pm.test(\"Status 403 con rol ENTRENADOR\", () => pm.response.to.have.status(403));\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYTQ5ZDI5MjgtOGI1ZS00NThkLThhYWQtZWRiNjdkYTdhMTEzIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTM2NTA5LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.cUFSYr_VgvTgxHzMmz8EWWTSzwIcDWAfP8SkZlOt38I",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"userName\": \"carlos_trainer\",\r\n    \"email\": \"carlos@gym.com\",\r\n    \"password\": \"Trainer123!\",\r\n    \"phoneNumber\": \"+51 987654321\",\r\n    \"especialidad\": \"Fuerza e Hipertrofia\",\r\n    \"certificaciones\": \"NSCA-CPT, ACSM\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores?page=1&pageSize;=10",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Lista entrenadores\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"items es array\", () => pm.expect(json.data.items).to.be.an(\"array\"));\r",
+              "pm.test(\"totalCount >= 0\", () => pm.expect(json.data.totalCount).to.be.at.least(0));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ENTRENADOR ────────────────────────\r",
+              "// pm.test(\"Status 403 con token ENTRENADOR\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYTQ5ZDI5MjgtOGI1ZS00NThkLThhYWQtZWRiNjdkYTdhMTEzIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTM2NTA5LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.cUFSYr_VgvTgxHzMmz8EWWTSzwIcDWAfP8SkZlOt38I",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores?page=1&pageSize;=10",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize;",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const eId = pm.environment.get(\"testEntrenadorId\");\r",
+              "pm.test(\"testEntrenadorId disponible\", () => pm.expect(eId).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Entrenador encontrado\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"entrenadorId coincide\", () =>\r",
+              "  pm.expect(json.data.entrenadorId).to.equal(Number(pm.environment.get(\"testEntrenadorId\"))));\r",
+              "pm.test(\"userName presente\", () => pm.expect(json.data.userName).to.be.a(\"string\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token SOCIO ────────────────────────────\r",
+              "// pm.test(\"Status 403 con rol SOCIO\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYTQ5ZDI5MjgtOGI1ZS00NThkLThhYWQtZWRiNjdkYTdhMTEzIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTM2NTA5LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.cUFSYr_VgvTgxHzMmz8EWWTSzwIcDWAfP8SkZlOt38I",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testEntrenadorId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testEntrenadorId\")).to.not.be.undefined);\r",
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Entrenador actualizado\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"Especialidad actualizada\", () =>\r",
+              "  pm.expect(json.data.especialidad).to.equal(\"Cardio y Resistencia\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiNTljY2RmNDctY2Y4ZS00YjI2LThjOTMtZWM2Nzc0MTMzY2RjIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5MzY3NjEsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.ettshpbXqQuAxplTZSgK1Dpe0Yt0JqdARMH1EVuHOaw",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"especialidad\": \"Cardio y Resistencia\",\r\n    \"certificaciones\": \"ACSM, CrossFit L2\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores/asignar",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"socioId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testSocioId\")).to.not.be.undefined);\r",
+              "pm.test(\"entrenadorId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testEntrenadorId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Asignación exitosa\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Socio inexistente ───────────────────────\r",
+              "// Envía socioId: 999999 y verifica:\r",
+              "// pm.test(\"Status 404 - Socio no encontrado\", () => pm.response.to.have.status(404));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Entrenador inexistente ──────────────────\r",
+              "// pm.test(\"Status 404 - Entrenador no encontrado\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiNTljY2RmNDctY2Y4ZS00YjI2LThjOTMtZWM2Nzc0MTMzY2RjIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5MzY3NjEsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.ettshpbXqQuAxplTZSgK1Dpe0Yt0JqdARMH1EVuHOaw",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"socioId\": 1,\r\n    \"entrenadorId\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores/asignar",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores",
+            "asignar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/entrenadores/mis-socios",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Requiere token de ENTRENADOR\r",
+              "const token = pm.environment.get(\"entrenadorToken\");\r",
+              "pm.test(\"Token ENTRENADOR disponible\", () =>\r",
+              "  pm.expect(token).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Lista mis socios\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"data es array\", () => pm.expect(json.data).to.be.an(\"array\"));\r",
+              "pm.test(\"Cada socio tiene socioId\", () => {\r",
+              "  json.data.forEach(s => pm.expect(s.socioId).to.be.a(\"number\"));\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ADMIN ─────────────────────────────\r",
+              "// pm.test(\"Status 403 con token ADMIN\", () => pm.response.to.have.status(403));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token SOCIO ────────────────────────────\r",
+              "// pm.test(\"Status 403 con token SOCIO\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiYWZjMzdkODAtMGNjNS00MGEyLWI1YTYtMjg1NTlmMmJkNDdkIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5Mzk1NDcsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.GmQkNMBAKu0GlQjFTG3Idq2ELL8sQo38-2Q3CzB7URM",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/entrenadores/mis-socios",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "entrenadores",
+            "mis-socios"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201 - Membresía creada\", () => pm.response.to.have.status(201));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"membresiaId presente\", () => pm.expect(json.data.membresiaId).to.be.a(\"number\"));\r",
+              "pm.test(\"precio mayor que 0\", () => pm.expect(json.data.precio).to.be.above(0));\r",
+              "pm.test(\"duracionDias mayor que 0\", () => pm.expect(json.data.duracionDias).to.be.above(0));\r",
+              "pm.test(\"isActive = true por defecto\", () => pm.expect(json.data.isActive).to.be.true);\r",
+              " \r",
+              "if (json.data && json.data.membresiaId) {\r",
+              "  pm.environment.set(\"testMembresiaId\", json.data.membresiaId);\r",
+              "}\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Nombre duplicado ────────────────────────\r",
+              "// pm.test(\"Status 400 - Nombre ya existe\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: duracionDias = 0 ───────────────────────\r",
+              "// pm.test(\"Status 400 - Duración inválida\", () => pm.response.to.have.status(400));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiYWZjMzdkODAtMGNjNS00MGEyLWI1YTYtMjg1NTlmMmJkNDdkIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5Mzk1NDcsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.GmQkNMBAKu0GlQjFTG3Idq2ELL8sQo38-2Q3CzB7URM",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"nombre\": \"Gold\",\r\n    \"descripcion\": \"Acceso total + clases + nutricionista\",\r\n    \"duracionDias\": 30,\r\n    \"precio\": 249.0,\r\n    \"esRenovable\": true\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Cualquier token es válido\r",
+              "pm.test(\"Token disponible (cualquier rol)\", () => {\r",
+              "  const t = pm.environment.get(\"adminToken\") ||\r",
+              "            pm.environment.get(\"entrenadorToken\") ||\r",
+              "            pm.environment.get(\"socioToken\");\r",
+              "  pm.expect(t).to.be.a(\"string\").and.not.empty;\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Lista membresías\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"data es array\", () => pm.expect(json.data).to.be.an(\"array\"));\r",
+              "pm.test(\"Cada plan tiene membresiaId y precio\", () => {\r",
+              "  json.data.forEach(m => {\r",
+              "    pm.expect(m.membresiaId).to.be.a(\"number\");\r",
+              "    pm.expect(m.precio).to.be.a(\"number\");\r",
+              "  });\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Sin token ───────────────────────────────\r",
+              "// pm.test(\"Status 401 sin token\", () => pm.response.to.have.status(401));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testMembresiaId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testMembresiaId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Membresía encontrada\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"membresiaId coincide\", () =>\r",
+              "  pm.expect(json.data.membresiaId).to.equal(Number(pm.environment.get(\"testMembresiaId\"))));\r",
+              "pm.test(\"nombre presente\", () => pm.expect(json.data.nombre).to.be.a(\"string\"));\r",
+              "pm.test(\"precio es número\", () => pm.expect(json.data.precio).to.be.a(\"number\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiYWZjMzdkODAtMGNjNS00MGEyLWI1YTYtMjg1NTlmMmJkNDdkIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5Mzk1NDcsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.GmQkNMBAKu0GlQjFTG3Idq2ELL8sQo38-2Q3CzB7URM",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testMembresiaId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testMembresiaId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Membresía actualizada\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"precio actualizado\", () => pm.expect(json.data.precio).to.equal(175.00));\r",
+              "pm.test(\"isActive boolean\", () => pm.expect(json.data.isActive).to.be.a(\"boolean\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: duracionDias = 0 ───────────────────────\r",
+              "// pm.test(\"Status 400 - Duración inválida\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiYWZjMzdkODAtMGNjNS00MGEyLWI1YTYtMjg1NTlmMmJkNDdkIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5Mzk1NDcsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.GmQkNMBAKu0GlQjFTG3Idq2ELL8sQo38-2Q3CzB7URM",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"descripcion\": \"Acceso premium + clases + spa\",\r\n    \"precio\": 175.00,\r\n    \"duracionDias\": 30,\r\n    \"esRenovable\": true,\r\n    \"isActive\": true\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias/asignar",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"socioId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testSocioId\")).to.not.be.undefined);\r",
+              "pm.test(\"membresiaId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testMembresiaId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Membresía asignada\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"estado = ACTIVA\", () => pm.expect(json.data.estado).to.equal(\"ACTIVA\"));\r",
+              "pm.test(\"fechaFin calculada (= fechaInicio + duracionDias)\", () =>\r",
+              "  pm.expect(json.data.fechaFin).to.be.a(\"string\").and.not.empty);\r",
+              "pm.test(\"montoPagado >= 0\", () => pm.expect(json.data.montoPagado).to.be.at.least(0));\r",
+              " \r",
+              "if (json.data) pm.environment.set(\"testSocioMembresiaId\", json.data.socioMembresiaId);\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: montoPagado negativo ────────────────────\r",
+              "// pm.test(\"Status 400 - Monto inválido\", () => pm.response.to.have.status(400));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Socio inexistente ───────────────────────\r",
+              "// pm.test(\"Status 404 - Socio no encontrado\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiYWZjMzdkODAtMGNjNS00MGEyLWI1YTYtMjg1NTlmMmJkNDdkIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5Mzk1NDcsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.GmQkNMBAKu0GlQjFTG3Idq2ELL8sQo38-2Q3CzB7URM",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"socioId\": 1,\r\n    \"membresiaId\": 1,\r\n    \"fechaInicio\": \"2025-02-01\",\r\n    \"montoPagado\": 220.0,\r\n    \"notas\": \"Descuento por referido\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias/asignar",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias",
+            "asignar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias/socio/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testSocioId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testSocioId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Historial membresías\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"data es array\", () => pm.expect(json.data).to.be.an(\"array\"));\r",
+              "pm.test(\"Estados válidos en historial\", () => {\r",
+              "  const estadosValidos = [\"ACTIVA\", \"VENCIDA\", \"PAUSADA\", \"CANCELADA\"];\r",
+              "  json.data.forEach(m => pm.expect(estadosValidos).to.include(m.estado));\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token SOCIO ────────────────────────────\r",
+              "// pm.test(\"Status 403 con token SOCIO\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1IiwianRpIjoiNGMwNWQ0MjgtY2ExYy00YjRjLThkNDEtMjRhNDA0M2NjYWI2IiwidXNlcklkIjoiNSIsInVzZXJOYW1lIjoiY2FybG9zX3RyYWluZXIiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJFTlRSRU5BRE9SIiwiZXhwIjoxNzc1OTQzNTY2LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.x9u9uxnIDyohz2tOCwOsPoVrDYjkgP9oZOL557r2Ayg",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/membresias/socio/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias",
+            "socio",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/membresias/mi-membresia",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"Token SOCIO disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"socioToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Mi membresía activa\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"estado = ACTIVA\", () => pm.expect(json.data.estado).to.equal(\"ACTIVA\"));\r",
+              "pm.test(\"fechaFin presente\", () => pm.expect(json.data.fechaFin).to.be.a(\"string\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ADMIN ─────────────────────────────\r",
+              "// pm.test(\"Status 403 con token ADMIN\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiMzM0NDc0ZDMtNzhiMC00NTAyLThiOWEtNmQ4MjgwNjM0MGVmIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5NDQyMTIsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.iL6fv3ZvLOHB143SRpkAMBGERa6hB2GXlBM5avdycOI",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5078/api/membresias/mi-membresia",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "membresias",
+            "mi-membresia"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/asistencias/entrada",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testSocioId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testSocioId\")).to.not.be.undefined);\r",
+              "pm.test(\"Token ADMIN o ENTRENADOR disponible\", () => {\r",
+              "  const t = pm.environment.get(\"adminToken\") || pm.environment.get(\"entrenadorToken\");\r",
+              "  pm.expect(t).to.be.a(\"string\").and.not.empty;\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201 - Asistencia registrada\", () => pm.response.to.have.status(201));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"asistenciaId presente\", () => pm.expect(json.data.asistenciaId).to.be.a(\"number\"));\r",
+              "pm.test(\"fechaHoraSalida es null (sesión abierta)\", () =>\r",
+              "  pm.expect(json.data.fechaHoraSalida).to.be.null);\r",
+              "pm.test(\"duracionMinutos es null (sin salida)\", () =>\r",
+              "  pm.expect(json.data.duracionMinutos).to.be.null);\r",
+              "pm.test(\"socioUserName presente\", () =>\r",
+              "  pm.expect(json.data.socioUserName).to.be.a(\"string\").and.not.empty);\r",
+              " \r",
+              "if (json.data) pm.environment.set(\"testAsistenciaId\", json.data.asistenciaId);\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Socio inexistente ───────────────────────\r",
+              "// pm.test(\"Status 404 - Socio no encontrado\", () => pm.response.to.have.status(404));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token SOCIO ────────────────────────────\r",
+              "// pm.test(\"Status 403 con token SOCIO\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYjBlNzg5MTMtNWE3Ni00YTQ5LWE3ZWEtZTNkN2Q2MGQ0YzNiIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTQ0OTc5LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.h4Nrb7-NTrUQwJafOHtbxgjiHnIr3nHPIL4dys1F9-s",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"socioId\": 1,\r\n    \"fechaHoraEntrada\": \"2025-02-01 17:55:00\",\r\n    \"observaciones\": \"Visita normal\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/asistencias/entrada",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "asistencias",
+            "entrada"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/asistencias/1/salida",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testAsistenciaId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testAsistenciaId\")).to.not.be.undefined);\r",
+              "pm.test(\"Token ADMIN o ENTRENADOR disponible\", () => {\r",
+              "  const t = pm.environment.get(\"adminToken\") || pm.environment.get(\"entrenadorToken\");\r",
+              "  pm.expect(t).to.be.a(\"string\").and.not.empty;\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Salida registrada\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"fechaHoraSalida NOT null\", () => pm.expect(json.data.fechaHoraSalida).to.not.be.null);\r",
+              "pm.test(\"duracionMinutos es número positivo\", () =>\r",
+              "  pm.expect(json.data.duracionMinutos).to.be.a(\"number\").and.above(0));\r",
+              "pm.test(\"Salida >= Entrada\", () => {\r",
+              "  const entrada = new Date(json.data.fechaHoraEntrada);\r",
+              "  const salida  = new Date(json.data.fechaHoraSalida);\r",
+              "  pm.expect(salida.getTime()).to.be.at.least(entrada.getTime());\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Registrar salida dos veces ──────────────\r",
+              "// Ejecuta el mismo PUT dos veces. La segunda debe retornar 400:\r",
+              "// pm.test(\"Status 400 - Salida ya registrada\", () => pm.response.to.have.status(400));\r",
+              "// pm.test(\"Mensaje de error claro\", () =>\r",
+              "//   pm.expect(pm.response.json().message).to.include(\"ya tiene una salida\"));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// pm.test(\"Status 404 - Asistencia no encontrada\", () => pm.response.to.have.status(404));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiOGU3N2ZjOWQtM2ZlNS00ZWJlLTk1MzctNzljYzk4ZDRiYjUxIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5NDUyOTMsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.zrcASeQed0Hy212D_Ryaoi7NP6X9pgR8glhTCqy4a2o",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"fechaHoraSalida\": \"2025-02-01 19:30:00\",\r\n    \"observaciones\": \"Entrenamiento completado\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/asistencias/1/salida",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "asistencias",
+            "1",
+            "salida"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/asistencias/socio/1?page=1&pageSize;=20",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"testSocioId disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"testSocioId\")).to.not.be.undefined);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Historial asistencias\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"items es array\", () => pm.expect(json.data.items).to.be.an(\"array\"));\r",
+              "pm.test(\"totalCount >= 0\", () => pm.expect(json.data.totalCount).to.be.at.least(0));\r",
+              "pm.test(\"Cada registro tiene asistenciaId\", () => {\r",
+              "  json.data.items.forEach(a => pm.expect(a.asistenciaId).to.be.a(\"number\"));\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token SOCIO ────────────────────────────\r",
+              "// pm.test(\"Status 403 con token SOCIO\", () => pm.response.to.have.status(403));\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYTU2ZmMzNzctOThlOC00YjYzLThhNDYtZTJiNGNiZDAzNGEwIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTQ2MTcwLCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.73zqgQpux9mC6oHD47kKmwcTu80h_2EG86pKFIhVUQU",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n"
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/asistencias/socio/1?page=1&pageSize;=20",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "asistencias",
+            "socio",
+            "1"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize;",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/asistencias/mi-historial?page=1&pageSize;=10",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.test(\"Token SOCIO disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"socioToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Mi historial\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"items es array\", () => pm.expect(json.data.items).to.be.an(\"array\"));\r",
+              "pm.test(\"page y pageSize presentes\", () => {\r",
+              "  pm.expect(json.data.page).to.be.a(\"number\");\r",
+              "  pm.expect(json.data.pageSize).to.be.a(\"number\");\r",
+              "});\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ADMIN ─────────────────────────────\r",
+              "// pm.test(\"Status 403 con token ADMIN\", () => pm.response.to.have.status(403));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token ENTRENADOR ────────────────────────\r",
+              "// pm.test(\"Status 403 con token ENTRENADOR\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoiMjY4NzdmMTEtN2IxZi00M2Y2LTkwYzYtZWM3NDAzYWE1MWFlIiwidXNlcklkIjoiMSIsInVzZXJOYW1lIjoiSm9zZXBoQWxleGFuZGVyWU4yMDAwIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQURNSU4iLCJleHAiOjE3NzU5NDY3NzQsImlzcyI6Ikd5bUFwaSIsImF1ZCI6Ikd5bUNsaWVudHMifQ.747mCgFimo_7awb0ForPkzagXciloSuIQiC9-HHjhU0",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n"
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/asistencias/mi-historial?page=1&pageSize;=10",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "asistencias",
+            "mi-historial"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize;",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5078/api/socios/1",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const socioId = pm.environment.get(\"testSocioId\");\r",
+              "pm.test(\"testSocioId disponible para eliminar\", () =>\r",
+              "  pm.expect(socioId).to.not.be.undefined);\r",
+              "pm.test(\"Token ADMIN disponible\", () =>\r",
+              "  pm.expect(pm.environment.get(\"adminToken\")).to.be.a(\"string\").and.not.empty);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200 - Socio desactivado\", () => pm.response.to.have.status(200));\r",
+              " \r",
+              "const json = pm.response.json();\r",
+              "pm.test(\"success = true\", () => pm.expect(json.success).to.be.true);\r",
+              "pm.test(\"Mensaje indica desactivación\", () =>\r",
+              "  pm.expect(json.message).to.include(\"desactivado\"));\r",
+              " \r",
+              "// Limpiar variable de entorno\r",
+              "pm.environment.unset(\"testSocioId\");\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: ID inexistente ─────────────────────────\r",
+              "// Usa id=999999 y verifica:\r",
+              "// pm.test(\"Status 404 - No encontrado\", () => pm.response.to.have.status(404));\r",
+              " \r",
+              "// ── PRUEBA NEGATIVA: Token de ENTRENADOR ─────────────────────\r",
+              "// pm.test(\"Status 403 con rol ENTRENADOR\", () => pm.response.to.have.status(403));\r",
+              "\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoiYTQ5ZDI5MjgtOGI1ZS00NThkLThhYWQtZWRiNjdkYTdhMTEzIiwidXNlcklkIjoiNCIsInVzZXJOYW1lIjoiTHVjeUd1c3RpbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNPQ0lPIiwiZXhwIjoxNzc1OTM2NTA5LCJpc3MiOiJHeW1BcGkiLCJhdWQiOiJHeW1DbGllbnRzIn0.cUFSYr_VgvTgxHzMmz8EWWTSzwIcDWAfP8SkZlOt38I",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n"
+        },
+        "url": {
+          "raw": "http://localhost:5078/api/socios/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5078",
+          "path": [
+            "api",
+            "socios",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
